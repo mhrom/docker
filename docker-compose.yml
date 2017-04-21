@@ -1,0 +1,32 @@
+---
+
+version: '2'
+
+services:
+  redis:
+    image: redis
+    ports:
+      - "6379:6379"
+  
+  jenkins:
+    image: jenkins
+    environment:
+      JENKINS_HOME: /var/jenkins_home
+    ports:
+      - "8080:8080"
+      - "2222:2222"
+    volumes:
+      - "jenkins:/var/jenkins_home"
+      - "/home/mhrom/.ssh/id_rsa:/var/jenkins_home/.ssh/id_rsa"
+    
+  proxy:
+    image: nginx
+    ports:
+      - "80:80"
+    volumes:
+    - nginx:/etc/nginx
+    
+volumes:
+  registry:
+  jenkins:
+  nginx:
