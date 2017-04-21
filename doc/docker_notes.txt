@@ -1,0 +1,192 @@
+docker-compose 
+
+
+#create docker image 
+docker run -it --rm jenkins
+
+#change configuration of docker image
+
+mkdir -p /tmp/image
+chdir /tmp/image
+tar -xzf /some/broky.tar.gz
+sudo tar -czf . /some/fixed.tar.gz
+docker import /some/fixed.tar.gz fixed-image
+docker run -i --rm -w /tmp/image ubuntu bash -c 'tar -xzf - && tar -czf - .'
+
+#attach to console of running container 
+docker run -it jenkins bash
+
+#create network for containers 
+
+docker network create --subnet=192.168.2.18.0.0/16 mynet1
+
+#assign ip address to container 
+docker run --net mynet123 --ip 172.18.0.22 -it ubuntu bash
+
+#create mapping of ports to container
+
+docker ps
+
+docker inspect container_name | grep IPAddress
+
+docker run -d --name sqlplus --link db:db -p 1521:1521 sqlplus
+
+Dockerfile:
+FROM debian:7
+
+RUN apt-get update && \
+    apt-get -y install socat && \
+    apt-get clean
+
+USER nobody
+
+CMD socat -dddd TCP-LISTEN:1521,reuseaddr,fork TCP:db:1521
+
+#add nat translation on your local host with docker 
+iptables -t nat -A  DOCKER -p tcp --dport 8001 -j DNAT --to-destination 172.17.0.19:8000
+
+#run proxy with mapping port between container and host machine
+docker run -d -p 80:80 -v /var/run/docker.sock:/tmp/docker.sock:ro jwilder/nginx-proxy
+
+
+
+##run local registery to store docker images
+
+#install application from repository and use box configuration
+git clone https://github.com/dotcloud/docker-registry.git
+cd docker-registry
+cp config_sample.yml config.yml
+pip install -r requirements.txt
+
+#develop and debug mode
+gunicorn --access-logfile - --log-level debug --debug -b 0.0.0.0:5000 -w 1 wsgi:application
+
+#disable sudo password for docker nodes on sudo group and configuration user.
+mhrom   ALL=(ALL:ALL) NOPASSWD: ALL
+%sudo   ALL=(ALL:ALL) NOPASSWD: ALL
+
+
+#build image by your own
+git clone https://github.com/brightcommerce/docker-ubuntu.git
+cd docker-ubuntu
+docker build -t="$USER/ubuntu" .
+
+
+#update docker engine 
+for i in $(cat ../hosts); do echo -e "\n^^^^^^^^^^^$i^^^^^^^^^^^\n"; ssh mhrom@$i < update_docker.sh; done
+
+#!/bin/bash
+echo -e '\n*****Remove old version*****\n'
+sudo apt-get remove -y docker docker-engine
+sudo sleep 2
+#additional packages
+echo -e '\n*****Install additinal packages*****\n'
+sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common
+sleep 2
+#add Docker's official GPG key
+echo -e '\n*****Add repository for target server*****\n'
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+sudo apt-key fingerprint 0EBFCD88
+sudo add-apt-repository -y "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+sleep 2
+#update apt repository
+echo -e '\n*****Update and Install docker comunity edition*****\n'
+sudo apt-get update
+sudo apt-get install -y docker-ce
+sleep 2
+
+#add new manager to swarm cluster
+Swarm initialized: current node (rofyz4wcfzqwr8w71hyhp6ajn) is now a manager.
+
+To add a worker to this swarm, run the following command:
+
+    docker swarm join \
+    --token SWMTKN-1-44hsp3ffcqh4mvnk6sadquz9xlzrmugy3yhjsevu9m1sdinupx-8udg30e41d5eyvg2qpjqodiyx \
+    192.168.255.100:2377
+
+To add a manager to this swarm, run 'docker swarm join-token manager' and follow the instructions.
+
+#add container host to swarm cluster
+
+##create new volume
+#tmpfs
+docker volume create --driver local --opt type=tmpfs --opt device=tmpfs --opt o=size=100m,uid=1000 foo
+
+#btrfs
+docker volume create --driver local --opt type=btrfs --opt device=/dev/sdb1 data
+
+
+#mount file from host system into container
+docker run --rm -it -v ~/.bash_history:/root/.bash_history ubuntu /bin/bash
+
+
+docker create -v /dbdata --name dbstore training/postgres /bin/true
+You can then use the --volumes-from flag to mount the /dbdata volume in another container.
+$ docker run -d --volumes-from dbstore --name db1 training/postgres
+And another:
+$ docker run -d --volumes-from dbstore --name db2 training/postgres
+
+
+#nfs
+docker volume create --driver local --opt type=nfs --opt o=addr=192.168.1.1,rw --opt device=:/path/to/dir foo
+
+#
+docker run -v /dbdata --name dbstore2 ubuntu /bin/bash
+
+#remove volume 
+
+
+#run container with host folder
+
+
+#nginx reverse proxy 
+
+#generate selfsign tls certificate
+sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/ssl/private/nginx-selfsigned.key -out /etc/ssl/certs/nginx-selfsigned.crt
+sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout cert/docker-host1.key -out cert/docker-host1.crt
+
+
+http:
+      addr: localhost:5000
+      host: https://docker-manager:5000
+      tls:
+        certificate: /certs/docker-manager.crt
+        key: /cert/docker-manager.key
+storage:
+  filesystem:
+    rootdirectory: /var/lib/registry
+    maxthreads: 100
+	cache:
+      blobdescriptor: redis
+
+auth:
+  silly:
+    realm: silly-realm
+    service: silly-service
+  token:
+    realm: token-realm
+    service: token-service
+    issuer: registry-token-issuer
+    rootcertbundle: /root/certs/bundle
+  htpasswd:
+    realm: basic-realm
+    path: /path/to/htpasswd	  
+
+	
+	
+registry:
+    restart: always
+    image: "registry:2"
+    ports:
+      - "5000:5000"
+    environment:
+      REGISTRY_HTTP_TLS_CERTIFICATE: /certs/docker-manager.crt
+      REGISTRY_HTTP_TLS_KEY: /certs/docker-manager.key
+      REGISTRY_HTTP_SECRET: testpasswd
+      REGISTRY_AUTH: htpasswd
+      REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
+      REGISTRY_AUTH_HTPASSWD_REALM: Registry Realm
+    volumes:
+      - registry:/var/lib/registry
+      - /registry/certs:/certs/
+      - /registry/auth:/auth
